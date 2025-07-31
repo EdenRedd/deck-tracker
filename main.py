@@ -9,6 +9,7 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 list_of_cards = []
+cardsLeftInDeck = list_of_cards.copy()
 def GetCardsInDeck():
     with open(collectionLogs, 'r', encoding='utf-8-sig') as file:
         collection_data = json.load(file)
@@ -51,13 +52,16 @@ with open(liveLogs, 'r', encoding= 'utf-8-sig') as file:
         if TRIGGER_KEYWORD in line:
             clear_screen()
             print(GetCardsInDeck())
+            cardsLeftInDeck = list_of_cards.copy()
             print("✅ Match started! Found line:", line.strip()) #Start rendering the deck
             canContinue = True
 
-        if canContinue and list_of_cards[0] in line:
-            list_of_cards.remove(list_of_cards[0])
-            print("✅ Card removed from deck:", list_of_cards[0])
-            print("Current deck:", list_of_cards)
+        for card in list_of_cards:
+            if canContinue and card in line:
+                if card in cardsLeftInDeck:
+                    cardsLeftInDeck.remove(card)
+                    print("Current deck:", cardsLeftInDeck)
+
 
         if END_KEYWORD in line:
             print("✅ Match ended! Found line:", line.strip()) #Stop rendering the deck
