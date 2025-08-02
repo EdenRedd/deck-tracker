@@ -5,12 +5,16 @@ import os
 import json
 import time
 
+#Have to replace these hardcoded paths with a way to work for any user
+collectionLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\Standalone\States\nvprod\CollectionState.json"
+playStateLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\Standalone\States\nvprod\PlayState.json"
+liveLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\ErrorLog.txt"
+
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-list_of_cards = []
-cardsLeftInDeck = list_of_cards.copy()
 def GetCardsInDeck():
+    deck_cards = []
     with open(collectionLogs, 'r', encoding='utf-8-sig') as file:
         collection_data = json.load(file)
     with open(playStateLogs, 'r', encoding='utf-8-sig') as file:
@@ -22,18 +26,17 @@ def GetCardsInDeck():
         if deck['Id'] == deckId:
             for card in deck['Cards']:
                 if 'CardDefId' in card:
-                    list_of_cards.append(card['CardDefId'])
+                    deck_cards.append(card['CardDefId'])
                 else:
                     print(f"Card without CardDefId found: {card}")
     
-    return list_of_cards
-#
-collectionLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\Standalone\States\nvprod\CollectionState.json"
-playStateLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\Standalone\States\nvprod\PlayState.json"
-liveLogs = r"C:\Users\ojeda\AppData\LocalLow\Second Dinner\SNAP\ErrorLog.txt"
+    return deck_cards
 
-TRIGGER_KEYWORD = "OnMatchmakingMatchFound"
-END_KEYWORD = "GameResultsEntry"
+list_of_cards = []
+cardsLeftInDeck = []
+
+START_GAME_KEYWORD = "OnMatchmakingMatchFound"
+END_GAME_KEYWORD = "GameManager|OnLeaveGameScene"
 canContinue = False
 
 while not os.path.exists(liveLogs):
@@ -49,37 +52,23 @@ with open(liveLogs, 'r', encoding= 'utf-8-sig') as file:
             time.sleep(0.5)
             continue
        
-        if TRIGGER_KEYWORD in line:
+        if START_GAME_KEYWORD in line:
+            list_of_cards = GetCardsInDeck()
             clear_screen()
             print(GetCardsInDeck())
             cardsLeftInDeck = list_of_cards.copy()
             print("✅ Match started! Found line:", line.strip()) #Start rendering the deck
             canContinue = True
 
-        for card in list_of_cards:
-            if canContinue and card in line:
-                if card in cardsLeftInDeck:
+        if canContinue and any((card + (".asset|DrawCard")) in line for card in list_of_cards):
+            for card in list_of_cards:
+                if card in line and card in cardsLeftInDeck:
                     cardsLeftInDeck.remove(card)
                     print("Current deck:", cardsLeftInDeck)
 
 
-        if END_KEYWORD in line:
+        if END_GAME_KEYWORD in line:
+            list_of_cards.clear()
+            cardsLeftInDeck.clear()
+            canContinue = False
             print("✅ Match ended! Found line:", line.strip()) #Stop rendering the deck
-
-
-
-list_of_cards = []
-
-cards = game_state['RemoteGame']['GameState']['ClientResultMessage']['GameResultAccountItems'][0]['Deck']['Cards']
-
-for card in cards:
-    list_of_cards.append(card['CardDefId'])
-
-
-
-
-while True:
-    clear_screen()
-    print(list_of_cards)
-
-#print(game_state['RemoteGame']['GameState']['ClientResultMessage']['GameResultAccountItems'][0]['Deck']['Cards'])
